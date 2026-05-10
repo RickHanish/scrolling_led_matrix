@@ -23,16 +23,7 @@ int scroll_x = WIDTH;
 
 WebServer server(80);
 
-String message =
-  "Hello <3 :) :(" +
-  String("\u2600\uFE0F") + // sunshine
-  String("\u2764") +       // heart
-  String("\U0001F642") +   // smiley face
-  String("\U0001F641") +   // sad face
-  String("\U0001F31E") +   // sunshine
-  String("\U0001F44D") +   // thumbs up
-  String("\u2601") +       // cloud
-  String("\U0001F4A7");    // rain drop
+String message;
 
 CRGB currentColor = CRGB::White;
 uint8_t currentBrightnessPct = 15;
@@ -40,9 +31,10 @@ uint8_t currentBrightness;
 
 // Default message cycling state
 bool customMessage = false; // true when user explicitly set a message
-int defaultIndex = 2; // 0=welcome,1=time/date,2=weather
+int defaultIndex = 1; // 0=welcome,1=time/date,2=weather,3=IP address
 String cachedWeather = "";
 String currentDefaultDisplay = ""; // built when a default message begins
+String httpServerAddr = "";
 
 String getTimeString() {
   struct tm timeinfo;
@@ -50,8 +42,26 @@ String getTimeString() {
     return String("Time N/A");
   }
 
+  char monthBuf[16];
+  strftime(monthBuf, sizeof(monthBuf), "%b", &timeinfo);
+
+  int hour12 = timeinfo.tm_hour % 12;
+  if (hour12 == 0) {
+    hour12 = 12;
+  }
+
   char buf[64];
-  strftime(buf, sizeof(buf), "%Y-%m-%d %I:%M:%S %p", &timeinfo);
+  snprintf(
+    buf,
+    sizeof(buf),
+    "%s %d, %d:%02d %s",
+    monthBuf,
+    timeinfo.tm_mday,
+    hour12,
+    timeinfo.tm_min,
+    (timeinfo.tm_hour < 12) ? "AM" : "PM"
+  );
+
   return String(buf);
 }
 
@@ -86,7 +96,6 @@ String getWeatherString() {
     String emoji;
     String lowerCondition = condition;
     lowerCondition.toLowerCase();
-    lowerCondition = "fog"; // just for testing
 
     if (lowerCondition.indexOf("thunder") >= 0 ||
         lowerCondition.indexOf("storm") >= 0 ||
@@ -119,7 +128,7 @@ String getWeatherString() {
       emoji = String("\u2600\uFE0F"); // sunshine
     }
 
-    return condition + " " + emoji + ", " + tempFStr + "F, " + String(maxRainChance) + "% rain";
+    return condition + " " + emoji + ", " + tempFStr + "°F, " + String(maxRainChance) + "% rain";
   }
   http.end();
   return String("Weather N/A");
@@ -231,6 +240,9 @@ void connect_WiFi() {
   Serial.println("\nConnected!");
   Serial.print("IP: ");
   Serial.println(WiFi.localIP());
+
+  // Cache server address for default-message display.
+  httpServerAddr = "IP: " + WiFi.localIP().toString();
 }
 
 
@@ -361,18 +373,15 @@ void draw_glyph(int x_offset, int y_offset, uint32_t codepoint, CRGB color) {
 void setup() {
   Serial.begin(115200);
 
-  configTime(0, 0, "pool.ntp.org");  // get UTC time
-  setenv("TZ", "CST6CDT,M3.2.0/2,M11.1.0/2", 1);
-  tzset();
-
   FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);
   currentBrightness = pow(currentBrightnessPct / 100.0, 2.2) * 255;
   FastLED.setBrightness(currentBrightness);
 
   connect_WiFi();
 
-  // Initialize NTP
-  configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+  // Initialize local timezone-aware NTP after Wi-Fi is connected.
+  configTzTime("CST6CDT,M3.2.0/2,M11.1.0/2", "pool.ntp.org", "time.nist.gov");
+  Serial.println(getTimeString());
 
   server.on("/", handleRoot);
   server.on("/set", HTTP_ANY, handleSet);
@@ -402,15 +411,18 @@ void loop() {
   } else {
     // Build current default display only when needed so we fetch weather sparingly
     if (currentDefaultDisplay.length() == 0) {
-      String pad = "   "; // a few spaces to clear screen between messages
       if (defaultIndex == 0) {
-        currentDefaultDisplay = String("Welcome!") + pad;
+        currentDefaultDisplay = String("Welcome!");
       }
       else if (defaultIndex == 1) {
-        currentDefaultDisplay = getTimeString() + pad;
-      } else if (defaultIndex == 2) {
+        currentDefaultDisplay = getTimeString();
+      }
+      else if (defaultIndex == 2) {
         cachedWeather = getWeatherString();
-        currentDefaultDisplay = cachedWeather + pad;
+        currentDefaultDisplay = cachedWeather;
+      }
+      else if (defaultIndex == 3) {
+        currentDefaultDisplay = httpServerAddr.length() > 0 ? httpServerAddr : String("IP N/A");
       }
     }
     displayMessage = currentDefaultDisplay;
@@ -436,7 +448,7 @@ void loop() {
   if (scroll_x < -renderedWidth(displayMessage)) {
     // advance to next default message and force rebuild on next frame
     currentDefaultDisplay = "";
-    defaultIndex = (defaultIndex + 1) % 3;
+    defaultIndex = (defaultIndex + 1) % 4;
     scroll_x = WIDTH;
   }
 }
