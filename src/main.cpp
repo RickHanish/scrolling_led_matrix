@@ -40,7 +40,7 @@ uint8_t currentBrightness;
 
 // Default message cycling state
 bool customMessage = false; // true when user explicitly set a message
-int defaultIndex = 0; // 0=welcome,1=time/date,2=weather
+int defaultIndex = 2; // 0=welcome,1=time/date,2=weather
 String cachedWeather = "";
 String currentDefaultDisplay = ""; // built when a default message begins
 
@@ -49,10 +49,12 @@ String getTimeString() {
   if (!getLocalTime(&timeinfo)) {
     return String("Time N/A");
   }
+
   char buf[64];
-  strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
+  strftime(buf, sizeof(buf), "%Y-%m-%d %I:%M:%S %p", &timeinfo);
   return String(buf);
 }
+
 
 String getWeatherString() {
   HTTPClient http;
@@ -71,7 +73,8 @@ String getWeatherString() {
     }
 
     String condition = doc["current_condition"][0]["weatherDesc"][0]["value"].as<String>();
-    String tempF = doc["current_condition"][0]["temp_F"].as<String>();
+    int tempFInt = doc["current_condition"][0]["temp_F"].as<int>();
+    String tempFStr = doc["current_condition"][0]["temp_F"].as<String>();
     int maxRainChance = 0;
     JsonArray hourly = doc["weather"][0]["hourly"];
     for (JsonObject hour : hourly) {
@@ -83,10 +86,30 @@ String getWeatherString() {
     String emoji;
     String lowerCondition = condition;
     lowerCondition.toLowerCase();
+    lowerCondition = "fog"; // just for testing
 
-    if (lowerCondition.indexOf("rain") >= 0 ||
-        lowerCondition.indexOf("drizzle") >= 0 ||
-        lowerCondition.indexOf("shower") >= 0) {
+    if (lowerCondition.indexOf("thunder") >= 0 ||
+        lowerCondition.indexOf("storm") >= 0 ||
+        lowerCondition.indexOf("lightning") >= 0) {
+      emoji = String("\U0001F329"); // storm cloud
+    } else if (lowerCondition.indexOf("snow") >= 0 ||
+               lowerCondition.indexOf("sleet") >= 0 ||
+               lowerCondition.indexOf("hail") >= 0 ||
+               lowerCondition.indexOf("blizzard") >= 0 ||
+               tempFInt < 32) {
+      emoji = String("\u2744"); // snowflake
+    } else if (lowerCondition.indexOf("fog") >= 0 ||
+               lowerCondition.indexOf("mist") >= 0 ||
+               lowerCondition.indexOf("haze") >= 0 ||
+               lowerCondition.indexOf("smoke") >= 0) {
+      emoji = String("\U0001F32B"); // fog / haze
+    } else if (lowerCondition.indexOf("partly") >= 0 ||
+               lowerCondition.indexOf("sun and cloud") >= 0 ||
+               lowerCondition.indexOf("sunny intervals") >= 0) {
+      emoji = String("\u26C5"); // partly sunny
+    } else if (lowerCondition.indexOf("rain") >= 0 ||
+               lowerCondition.indexOf("drizzle") >= 0 ||
+               lowerCondition.indexOf("shower") >= 0) {
       emoji = String("\U0001F4A7"); // raindrop
     } else if (lowerCondition.indexOf("cloud") >= 0 ||
                lowerCondition.indexOf("overcast") >= 0) {
@@ -96,7 +119,7 @@ String getWeatherString() {
       emoji = String("\u2600\uFE0F"); // sunshine
     }
 
-    return condition + " " + emoji + ", " + tempF + "F, " + String(maxRainChance) + "% rain";
+    return condition + " " + emoji + ", " + tempFStr + "F, " + String(maxRainChance) + "% rain";
   }
   http.end();
   return String("Weather N/A");
@@ -337,6 +360,10 @@ void draw_glyph(int x_offset, int y_offset, uint32_t codepoint, CRGB color) {
 
 void setup() {
   Serial.begin(115200);
+
+  configTime(0, 0, "pool.ntp.org");  // get UTC time
+  setenv("TZ", "CST6CDT,M3.2.0/2,M11.1.0/2", 1);
+  tzset();
 
   FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);
   currentBrightness = pow(currentBrightnessPct / 100.0, 2.2) * 255;
