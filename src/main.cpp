@@ -31,6 +31,8 @@ uint8_t currentBrightness;
 
 // Default message cycling state
 bool customMessage = false; // true when user explicitly set a message
+unsigned long customMessageStartedAt = 0;
+const unsigned long customMessageMaxAgeMs = 48UL * 60UL * 60UL * 1000UL;
 int defaultIndex = 0; // 0=welcome,1=time/date,2=weather,3=IP address
 String cachedWeather = "";
 String currentDefaultDisplay = ""; // built when a default message begins
@@ -291,6 +293,7 @@ void handleSet() {
   // If user checked 'use_default' then switch to default cycling
   if (server.hasArg("use_default")) {
     customMessage = false;
+    customMessageStartedAt = 0;
     // reset defaults so the next default message starts fresh
     defaultIndex = 0;
     currentDefaultDisplay = "";
@@ -299,6 +302,7 @@ void handleSet() {
     if (server.hasArg("msg")) {
       message = preprocessMessage(server.arg("msg"));
       customMessage = true;
+      customMessageStartedAt = millis();
       // start showing the new custom message from the right
       scroll_x = WIDTH;
     }
@@ -398,6 +402,17 @@ void setup() {
 
 void loop() {
   server.handleClient();
+
+  if (customMessage && customMessageStartedAt != 0) {
+    unsigned long customAge = millis() - customMessageStartedAt;
+    if (customAge >= customMessageMaxAgeMs) {
+      customMessage = false;
+      customMessageStartedAt = 0;
+      defaultIndex = 0;
+      currentDefaultDisplay = "";
+      scroll_x = WIDTH;
+    }
+  }
 
   currentBrightness = pow(currentBrightnessPct / 100.0, 2.2) * 255;
   FastLED.setBrightness(currentBrightness);
