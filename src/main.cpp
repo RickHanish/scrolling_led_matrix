@@ -31,7 +31,7 @@ uint8_t currentBrightness;
 
 // Default message cycling state
 bool customMessage = false; // true when user explicitly set a message
-int defaultIndex = 1; // 0=welcome,1=time/date,2=weather,3=IP address
+int defaultIndex = 0; // 0=welcome,1=time/date,2=weather,3=IP address
 String cachedWeather = "";
 String currentDefaultDisplay = ""; // built when a default message begins
 String httpServerAddr = "";
