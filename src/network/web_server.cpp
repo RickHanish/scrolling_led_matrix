@@ -95,7 +95,7 @@ static void handleSet() {
 		}
 	}
 
-	server.send(200, "text/plain", "Updating LED panel...");
+	server.send(200, "text/plain", "Message sent successfully! Updating LED panel...");
 }
 
 void setupWebServer(AppState& state, const char* apiKey) {

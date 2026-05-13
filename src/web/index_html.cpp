@@ -302,8 +302,17 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 
 		let letterColors = (state.letterColorsCsv || '').split(',').map(v => v.trim()).filter(Boolean);
 
+		function preprocessMessage(message) {
+			let s = String(message || '');
+			// Keep replacement order identical to firmware preprocessMessage.
+			s = s.replaceAll('<3', '\u2764');
+			s = s.replaceAll(':)', '\u{1F642}');
+			s = s.replaceAll(':(', '\u{1F641}');
+			return s;
+		}
+
 		function glyphsFromMessage(message) {
-			return Array.from(message || '').filter(ch => ch !== '\uFE0F');
+			return Array.from(preprocessMessage(message)).filter(ch => ch !== '\uFE0F');
 		}
 
 		function clampColor(hex) {
