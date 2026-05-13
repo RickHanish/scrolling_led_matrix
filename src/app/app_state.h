@@ -8,6 +8,24 @@
 #include "colors/color_modes.h"
 #include "config/constants.h"
 
+enum class RenderProgram : uint8_t {
+	Message,
+	Test,
+	Design
+};
+
+enum class MatrixTest : uint8_t {
+	ScanWhitePixel,
+	SolidFill,
+	RainbowCycle
+};
+
+enum class MatrixDesign : uint8_t {
+	Plasma,
+	CheckerPulse,
+	DiamondWave
+};
+
 struct AppState {
 	CRGB leds[NUM_LEDS];
 
@@ -24,6 +42,13 @@ struct AppState {
 
 	uint8_t currentBrightnessPct = DEFAULT_BRIGHTNESS_PCT;
 	uint8_t currentBrightness = 50; // Default to ~50/255 until applyBrightness calculates it
+
+	RenderProgram renderProgram = RenderProgram::Message;
+	MatrixTest selectedTest = MatrixTest::ScanWhitePixel;
+	MatrixDesign selectedDesign = MatrixDesign::Plasma;
+	CRGB testSolidColor = CRGB(0, 160, 255);
+	uint16_t animationTick = 0;
+	uint16_t scanIndex = 0;
 
 	bool customMessage = false;
 	unsigned long customMessageStartedAt = 0;

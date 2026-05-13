@@ -11,6 +11,36 @@
 static AppState* gState = nullptr;
 static const char* gApiKey = nullptr;
 
+static RenderProgram parseRenderProgram(const String& value) {
+	if (value == "test") {
+		return RenderProgram::Test;
+	}
+	if (value == "design") {
+		return RenderProgram::Design;
+	}
+	return RenderProgram::Message;
+}
+
+static MatrixTest parseMatrixTest(const String& value) {
+	if (value == "solid_fill") {
+		return MatrixTest::SolidFill;
+	}
+	if (value == "rainbow_cycle") {
+		return MatrixTest::RainbowCycle;
+	}
+	return MatrixTest::ScanWhitePixel;
+}
+
+static MatrixDesign parseMatrixDesign(const String& value) {
+	if (value == "checker_pulse") {
+		return MatrixDesign::CheckerPulse;
+	}
+	if (value == "diamond_wave") {
+		return MatrixDesign::DiamondWave;
+	}
+	return MatrixDesign::Plasma;
+}
+
 static void handleRoot() {
 	if (gState == nullptr || gApiKey == nullptr) {
 		return;
@@ -56,16 +86,39 @@ static void handleSet() {
 		parsePerLetterColors(*gState, server.arg("letter_colors"));
 	}
 
+	if (server.hasArg("program")) {
+		gState->renderProgram = parseRenderProgram(server.arg("program"));
+	}
+
+	if (server.hasArg("test_name")) {
+		gState->selectedTest = parseMatrixTest(server.arg("test_name"));
+	}
+
+	if (server.hasArg("design_name")) {
+		gState->selectedDesign = parseMatrixDesign(server.arg("design_name"));
+	}
+
+	if (server.hasArg("test_color")) {
+		parseHexColor(server.arg("test_color"), gState->testSolidColor);
+	}
+
 	String action = server.hasArg("action") ? server.arg("action") : String("");
 
 	if (action == "use_default" || server.hasArg("use_default")) {
+		gState->renderProgram = RenderProgram::Message;
 		gState->customMessage = false;
 		gState->customMessageStartedAt = 0;
 		gState->defaultIndex = 0;
 		gState->currentDefaultDisplay = "";
 		gState->scrollX = WIDTH;
+	} else if (action == "run_test") {
+		gState->renderProgram = RenderProgram::Test;
+		gState->scanIndex = 0;
+	} else if (action == "run_design") {
+		gState->renderProgram = RenderProgram::Design;
 	} else if (server.hasArg("msg")) {
 		gState->message = preprocessMessage(server.arg("msg"));
+		gState->renderProgram = RenderProgram::Message;
 		gState->customMessage = true;
 		gState->customMessageStartedAt = millis();
 		gState->scrollX = WIDTH;
@@ -95,7 +148,7 @@ static void handleSet() {
 		}
 	}
 
-	server.send(200, "text/plain", "Message sent successfully! Updating LED panel...");
+	server.send(200, "text/plain", "Settings updated. Matrix mode changed.");
 }
 
 void setupWebServer(AppState& state, const char* apiKey) {

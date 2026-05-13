@@ -25,6 +25,36 @@ static String escapeForJs(const String& input) {
 	return out;
 }
 
+static String renderProgramToString(RenderProgram program) {
+	if (program == RenderProgram::Test) {
+		return String("test");
+	}
+	if (program == RenderProgram::Design) {
+		return String("design");
+	}
+	return String("message");
+}
+
+static String matrixTestToString(MatrixTest test) {
+	if (test == MatrixTest::SolidFill) {
+		return String("solid_fill");
+	}
+	if (test == MatrixTest::RainbowCycle) {
+		return String("rainbow_cycle");
+	}
+	return String("scan_white_pixel");
+}
+
+static String matrixDesignToString(MatrixDesign design) {
+	if (design == MatrixDesign::CheckerPulse) {
+		return String("checker_pulse");
+	}
+	if (design == MatrixDesign::DiamondWave) {
+		return String("diamond_wave");
+	}
+	return String("plasma");
+}
+
 String buildIndexHtml(const AppState& state, const char* apiKey) {
 	String msgValue = state.customMessage ? state.message : String("");
 
@@ -130,6 +160,25 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 			gap: 10px;
 			flex-wrap: wrap;
 		}
+		.tabs {
+			display: flex;
+			gap: 8px;
+			flex-wrap: wrap;
+			margin-bottom: 10px;
+		}
+		.tab-btn {
+			background: #eef5ff;
+			color: #1b3557;
+			border: 1px solid #c8d9ec;
+			font-weight: 700;
+		}
+		.tab-btn.active {
+			background: linear-gradient(90deg, var(--accent), #2a7bff);
+			color: #fff;
+			border-color: transparent;
+		}
+		.tab-panel { display: none; }
+		.tab-panel.active { display: block; }
 		button {
 			border: 0;
 			border-radius: 11px;
@@ -219,33 +268,88 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 
 		<div class='grid'>
 			<section class='card'>
-				<label for='msg'>Custom Message</label>
-				<input id='msg' type='text' maxlength='220' placeholder='Type your message'>
-
-				<div style='height:10px'></div>
-
-				<label for='mode'>Color Mode</label>
-				<select id='mode'>
-					<option value='solid'>Solid color</option>
-					<option value='gradient'>Gradient</option>
-					<option value='per_letter'>Define color for each letter</option>
-				</select>
-
-				<div style='height:10px'></div>
-
-				<div id='solidWrap'>
-					<label for='solidColor'>Solid Color</label>
-					<input id='solidColor' type='color'>
+				<div class='tabs'>
+					<button id='tabMessage' class='tab-btn active' type='button'>Message</button>
+					<button id='tabTests' class='tab-btn' type='button'>Tests</button>
+					<button id='tabDesigns' class='tab-btn' type='button'>Designs</button>
 				</div>
 
-				<div id='gradientWrap' class='row' style='display:none'>
-					<div>
-						<label for='gradientStart'>Gradient Start</label>
-						<input id='gradientStart' type='color'>
+				<div id='messagePanel' class='tab-panel active'>
+					<label for='msg'>Custom Message</label>
+					<input id='msg' type='text' maxlength='220' placeholder='Type your message'>
+
+					<div style='height:10px'></div>
+
+					<label for='mode'>Color Mode</label>
+					<select id='mode'>
+						<option value='solid'>Solid color</option>
+						<option value='gradient'>Gradient</option>
+						<option value='per_letter'>Define color for each letter</option>
+					</select>
+
+					<div style='height:10px'></div>
+
+					<div id='solidWrap'>
+						<label for='solidColor'>Solid Color</label>
+						<input id='solidColor' type='color'>
 					</div>
-					<div>
-						<label for='gradientEnd'>Gradient End</label>
-						<input id='gradientEnd' type='color'>
+
+					<div id='gradientWrap' class='row' style='display:none'>
+						<div>
+							<label for='gradientStart'>Gradient Start</label>
+							<input id='gradientStart' type='color'>
+						</div>
+						<div>
+							<label for='gradientEnd'>Gradient End</label>
+							<input id='gradientEnd' type='color'>
+						</div>
+					</div>
+
+					<div style='height:10px'></div>
+
+					<div class='actions'>
+						<button id='sendCustom' class='btn-primary' type='button'>Submit</button>
+						<button id='useDefault' class='btn-secondary' type='button'>Default</button>
+					</div>
+
+					<div style='height:10px'></div>
+					<div id='letterWrap' style='display:none'>
+						<label>Per-Letter Colors</label>
+						<div id='letterGrid' class='letter-grid'></div>
+					</div>
+				</div>
+
+				<div id='testsPanel' class='tab-panel'>
+					<label for='testName'>Test Pattern</label>
+					<select id='testName'>
+						<option value='scan_white_pixel'>Scan White Pixel</option>
+						<option value='solid_fill'>Solid Color Fill</option>
+						<option value='rainbow_cycle'>Rainbow Cycle</option>
+					</select>
+
+					<div style='height:10px'></div>
+					<div id='testColorWrap'>
+						<label for='testColor'>Solid Fill Color</label>
+						<input id='testColor' type='color'>
+					</div>
+
+					<div style='height:12px'></div>
+					<div class='actions'>
+						<button id='runTest' class='btn-primary' type='button'>Run Test</button>
+					</div>
+				</div>
+
+				<div id='designsPanel' class='tab-panel'>
+					<label for='designName'>Full-Matrix Design</label>
+					<select id='designName'>
+						<option value='plasma'>Plasma</option>
+						<option value='checker_pulse'>Checker Pulse</option>
+						<option value='diamond_wave'>Diamond Wave</option>
+					</select>
+
+					<div style='height:12px'></div>
+					<div class='actions'>
+						<button id='runDesign' class='btn-primary' type='button'>Run Design</button>
 					</div>
 				</div>
 
@@ -254,11 +358,6 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 				<label for='brightness'>Brightness (%)</label>
 				<input id='brightness' type='number' min='0' max='100'>
 
-				<div style='height:12px'></div>
-				<div class='actions'>
-					<button id='sendCustom' class='btn-primary' type='button'>Submit</button>
-					<button id='useDefault' class='btn-secondary' type='button'>Default</button>
-				</div>
 				<p id='status' class='status'></p>
 			</section>
 
@@ -267,10 +366,7 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 				<div id='preview' class='preview'>Preview</div>
 
 				<div style='height:10px'></div>
-				<div id='letterWrap' style='display:none'>
-					<label>Per-Letter Colors</label>
-					<div id='letterGrid' class='letter-grid'></div>
-				</div>
+				<p class='sub'>Preview applies to message tab text colors.</p>
 			</section>
 		</div>
 	</main>
@@ -279,6 +375,10 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 		const state = {
 			key: "__API_KEY__",
 			message: "__MESSAGE__",
+			program: "__PROGRAM__",
+			testName: "__TEST_NAME__",
+			designName: "__DESIGN_NAME__",
+			testColor: "__TEST_COLOR__",
 			mode: "__MODE__",
 			solid: "__SOLID__",
 			gradientStart: "__GRADIENT_START__",
@@ -299,6 +399,16 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 		const solidWrap = document.getElementById('solidWrap');
 		const gradientWrap = document.getElementById('gradientWrap');
 		const statusEl = document.getElementById('status');
+		const tabMessageBtn = document.getElementById('tabMessage');
+		const tabTestsBtn = document.getElementById('tabTests');
+		const tabDesignsBtn = document.getElementById('tabDesigns');
+		const messagePanel = document.getElementById('messagePanel');
+		const testsPanel = document.getElementById('testsPanel');
+		const designsPanel = document.getElementById('designsPanel');
+		const testNameInput = document.getElementById('testName');
+		const testColorInput = document.getElementById('testColor');
+		const testColorWrap = document.getElementById('testColorWrap');
+		const designNameInput = document.getElementById('designName');
 
 		let letterColors = (state.letterColorsCsv || '').split(',').map(v => v.trim()).filter(Boolean);
 
@@ -427,11 +537,28 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 			statusEl.className = 'status ' + (kind || '');
 		}
 
+		function setActiveTab(tab) {
+			tabMessageBtn.classList.toggle('active', tab === 'message');
+			tabTestsBtn.classList.toggle('active', tab === 'test');
+			tabDesignsBtn.classList.toggle('active', tab === 'design');
+			messagePanel.classList.toggle('active', tab === 'message');
+			testsPanel.classList.toggle('active', tab === 'test');
+			designsPanel.classList.toggle('active', tab === 'design');
+		}
+
+		function updateTestUI() {
+			testColorWrap.style.display = testNameInput.value === 'solid_fill' ? 'block' : 'none';
+		}
+
 		async function sendForm(action) {
 			const brightness = Math.max(0, Math.min(100, Number(brightnessInput.value || 0)));
 			const params = new URLSearchParams();
 			params.set('key', state.key);
 			params.set('action', action);
+			params.set('program', state.program);
+			params.set('test_name', testNameInput.value);
+			params.set('design_name', designNameInput.value);
+			params.set('test_color', testColorInput.value.toUpperCase());
 			params.set('brightness', String(brightness));
 			params.set('mode', modeInput.value);
 			params.set('solid_color', solidColorInput.value.toUpperCase());
@@ -461,6 +588,9 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 		}
 
 		msgInput.value = state.message;
+		testNameInput.value = state.testName;
+		designNameInput.value = state.designName;
+		testColorInput.value = clampColor(state.testColor);
 		modeInput.value = state.mode;
 		solidColorInput.value = clampColor(state.solid);
 		gradientStartInput.value = clampColor(state.gradientStart);
@@ -478,7 +608,20 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 				document.getElementById('sendCustom').click();
 			}
 		});
+		tabMessageBtn.addEventListener('click', () => {
+			state.program = 'message';
+			setActiveTab('message');
+		});
+		tabTestsBtn.addEventListener('click', () => {
+			state.program = 'test';
+			setActiveTab('test');
+		});
+		tabDesignsBtn.addEventListener('click', () => {
+			state.program = 'design';
+			setActiveTab('design');
+		});
 		modeInput.addEventListener('change', updateModeUI);
+		testNameInput.addEventListener('change', updateTestUI);
 		solidColorInput.addEventListener('input', () => {
 			if (modeInput.value === 'per_letter') {
 				ensureLetterColors();
@@ -490,7 +633,17 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 
 		document.getElementById('sendCustom').addEventListener('click', () => sendForm('custom'));
 		document.getElementById('useDefault').addEventListener('click', () => sendForm('use_default'));
+		document.getElementById('runTest').addEventListener('click', () => {
+			state.program = 'test';
+			sendForm('run_test');
+		});
+		document.getElementById('runDesign').addEventListener('click', () => {
+			state.program = 'design';
+			sendForm('run_design');
+		});
 
+		setActiveTab(state.program || 'message');
+		updateTestUI();
 		updateModeUI();
 	</script>
 </body>
@@ -499,6 +652,10 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 
 	html.replace("__API_KEY__", escapeForJs(String(apiKey)));
 	html.replace("__MESSAGE__", escapeForJs(msgValue));
+	html.replace("__PROGRAM__", renderProgramToString(state.renderProgram));
+	html.replace("__TEST_NAME__", matrixTestToString(state.selectedTest));
+	html.replace("__DESIGN_NAME__", matrixDesignToString(state.selectedDesign));
+	html.replace("__TEST_COLOR__", colorToHex(state.testSolidColor));
 	html.replace("__MODE__", colorModeToString(state.colorMode));
 	html.replace("__SOLID__", colorToHex(state.currentColor));
 	html.replace("__GRADIENT_START__", colorToHex(state.gradientStartColor));
