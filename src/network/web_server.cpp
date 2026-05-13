@@ -3,7 +3,7 @@
 #include <Arduino.h>
 
 #include "app/app_state.h"
-#include "colors/colot_utils.h"
+#include "colors/color_utils.h"
 #include "config/constants.h"
 #include "text/text_utils.h"
 #include "web/index_html.h"

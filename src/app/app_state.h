@@ -23,7 +23,7 @@ struct AppState {
 	ColorMode colorMode = ColorMode::Solid;
 
 	uint8_t currentBrightnessPct = DEFAULT_BRIGHTNESS_PCT;
-	uint8_t currentBrightness = 0;
+	uint8_t currentBrightness = 50; // Default to ~50/255 until applyBrightness calculates it
 
 	bool customMessage = false;
 	unsigned long customMessageStartedAt = 0;

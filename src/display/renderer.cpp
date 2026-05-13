@@ -4,7 +4,7 @@
 
 #include "app/app_state.h"
 #include "app/message_manager.h"
-#include "colors/colot_utils.h"
+#include "colors/color_utils.h"
 #include "config/constants.h"
 #include "display/font.h"
 #include "text/text_utils.h"
@@ -57,7 +57,7 @@ void renderFrame(AppState& state) {
 		if (codepoint == 0xFE0F) {
 			continue;
 		}
-		drawGlyph(state, x, 0, codepoint, applyBrightnessToColor(state, colorForGlyph(state, glyphIndex, glyphCount)));
+		drawGlyph(state, x, 0, codepoint, colorForGlyph(state, glyphIndex, glyphCount));
 		glyphIndex++;
 		x += 6;
 	}
