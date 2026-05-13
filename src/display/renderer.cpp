@@ -57,7 +57,7 @@ void renderFrame(AppState& state) {
 		if (codepoint == 0xFE0F) {
 			continue;
 		}
-		drawGlyph(state, x, 0, codepoint, colorForGlyph(state, glyphIndex, glyphCount));
+		drawGlyph(state, x, 0, codepoint, applyBrightnessToColor(state, colorForGlyph(state, glyphIndex, glyphCount)));
 		glyphIndex++;
 		x += 6;
 	}

@@ -156,14 +156,17 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 		.preview {
 			min-height: 66px;
 			border-radius: 12px;
-			border: 1px dashed #bfd2e6;
-			background: repeating-linear-gradient(
-				-45deg,
-				rgba(12, 109, 210, 0.06),
-				rgba(12, 109, 210, 0.06) 8px,
-				rgba(12, 109, 210, 0.02) 8px,
-				rgba(12, 109, 210, 0.02) 16px
-			);
+			border: 1px solid #21334a;
+			background:
+				linear-gradient(180deg, rgba(10, 16, 26, 0.98), rgba(20, 30, 46, 0.98)),
+				repeating-linear-gradient(
+					-45deg,
+					rgba(255, 255, 255, 0.03),
+					rgba(255, 255, 255, 0.03) 8px,
+					rgba(255, 255, 255, 0.01) 8px,
+					rgba(255, 255, 255, 0.01) 16px
+				);
+			color: #f4f8ff;
 			display: flex;
 			align-items: center;
 			gap: 1px;
@@ -253,8 +256,8 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 
 				<div style='height:12px'></div>
 				<div class='actions'>
-					<button id='sendCustom' class='btn-primary' type='button'>Submit Custom Message</button>
-					<button id='useDefault' class='btn-secondary' type='button'>Use Default Messages</button>
+					<button id='sendCustom' class='btn-primary' type='button'>Submit</button>
+					<button id='useDefault' class='btn-secondary' type='button'>Default</button>
 				</div>
 				<p id='status' class='status'></p>
 			</section>
@@ -460,6 +463,11 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 				renderLetterPickers();
 			}
 			renderPreview();
+		});
+		msgInput.addEventListener('keypress', (e) => {
+			if (e.key === 'Enter') {
+				document.getElementById('sendCustom').click();
+			}
 		});
 		modeInput.addEventListener('change', updateModeUI);
 		solidColorInput.addEventListener('input', () => {

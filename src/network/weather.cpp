@@ -66,7 +66,7 @@ String getWeatherString() {
 			emoji = String("\u2600\uFE0F");
 		}
 
-		return condition + " " + emoji + ", " + tempFStr + "°F, " + String(maxRainChance) + "% rain";
+		return condition + " " + emoji + ", " + tempFStr + String("\u00B0") + "F, " + String(maxRainChance) + "% rain";
 	}
 
 	http.end();

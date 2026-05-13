@@ -14,3 +14,4 @@ String colorModeToString(ColorMode mode);
 String serializePerLetterColors(const AppState& state);
 void parsePerLetterColors(AppState& state, const String& csv);
 CRGB colorForGlyph(const AppState& state, size_t glyphIndex, size_t glyphCount);
+CRGB applyBrightnessToColor(const AppState& state, CRGB color);

@@ -8,6 +8,7 @@
 
 void initMatrix(AppState& state) {
 	FastLED.addLeds<WS2812B, DATA_PIN, GRB>(state.leds, NUM_LEDS);
+	FastLED.setBrightness(255);
 	applyBrightness(state);
 }
 

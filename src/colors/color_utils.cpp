@@ -104,3 +104,12 @@ CRGB colorForGlyph(const AppState& state, size_t glyphIndex, size_t glyphCount) 
 
 	return state.currentColor;
 }
+
+CRGB applyBrightnessToColor(const AppState& state, CRGB color) {
+	if (state.currentBrightness == 0) {
+		return CRGB::Black;
+	}
+
+	color.nscale8_video(state.currentBrightness);
+	return color;
+}

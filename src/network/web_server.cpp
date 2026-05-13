@@ -103,6 +103,11 @@ void setupWebServer(AppState& state, const char* apiKey) {
 	gApiKey = apiKey;
 
 	state.server.on("/", handleRoot);
+	state.server.on("/favicon.ico", HTTP_GET, []() {
+		if (gState != nullptr) {
+			gState->server.send(204, "text/plain", "");
+		}
+	});
 	state.server.on("/set", HTTP_ANY, handleSet);
 	state.server.begin();
 
