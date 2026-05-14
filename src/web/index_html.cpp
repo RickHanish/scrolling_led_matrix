@@ -32,6 +32,9 @@ static String renderProgramToString(RenderProgram program) {
 	if (program == RenderProgram::Design) {
 		return String("design");
 	}
+	if (program == RenderProgram::Image) {
+		return String("image");
+	}
 	return String("message");
 }
 
@@ -51,6 +54,9 @@ static String matrixDesignToString(MatrixDesign design) {
 	}
 	if (design == MatrixDesign::DiamondWave) {
 		return String("diamond_wave");
+	}
+	if (design == MatrixDesign::RollingField) {
+		return String("rolling_field");
 	}
 	return String("plasma");
 }
@@ -133,7 +139,8 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 		}
 		input[type='text'],
 		input[type='number'],
-		select {
+		select,
+		input[type='file'] {
 			width: 100%;
 			border: 1px solid #bfd2e6;
 			border-radius: 10px;
@@ -272,6 +279,7 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 					<button id='tabMessage' class='tab-btn active' type='button'>Message</button>
 					<button id='tabTests' class='tab-btn' type='button'>Tests</button>
 					<button id='tabDesigns' class='tab-btn' type='button'>Designs</button>
+					<button id='tabImage' class='tab-btn' type='button'>Image</button>
 				</div>
 
 				<div id='messagePanel' class='tab-panel active'>
@@ -345,12 +353,27 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 						<option value='plasma'>Plasma</option>
 						<option value='checker_pulse'>Checker Pulse</option>
 						<option value='diamond_wave'>Diamond Wave</option>
+						<option value='rolling_field'>Rolling Field</option>
 					</select>
 
 					<div style='height:12px'></div>
 					<div class='actions'>
 						<button id='runDesign' class='btn-primary' type='button'>Run Design</button>
 					</div>
+				</div>
+
+				<div id='imagePanel' class='tab-panel'>
+					<label for='imageFile'>Upload Image</label>
+					<input id='imageFile' type='file' accept='image/*'>
+
+					<div style='height:10px'></div>
+					<p class='sub'>The image will be resized to 32 pixels wide, converted to matrix pixels, and scrolled vertically if it is taller than the display.</p>
+
+					<div style='height:10px'></div>
+					<div class='actions'>
+						<button id='uploadImage' class='btn-primary' type='button'>Upload Image</button>
+					</div>
+					<p id='imageInfo' class='status'></p>
 				</div>
 
 				<div style='height:10px'></div>
@@ -402,13 +425,17 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 		const tabMessageBtn = document.getElementById('tabMessage');
 		const tabTestsBtn = document.getElementById('tabTests');
 		const tabDesignsBtn = document.getElementById('tabDesigns');
+		const tabImageBtn = document.getElementById('tabImage');
 		const messagePanel = document.getElementById('messagePanel');
 		const testsPanel = document.getElementById('testsPanel');
 		const designsPanel = document.getElementById('designsPanel');
+		const imagePanel = document.getElementById('imagePanel');
 		const testNameInput = document.getElementById('testName');
 		const testColorInput = document.getElementById('testColor');
 		const testColorWrap = document.getElementById('testColorWrap');
 		const designNameInput = document.getElementById('designName');
+		const imageFileInput = document.getElementById('imageFile');
+		const imageInfoEl = document.getElementById('imageInfo');
 
 		let letterColors = (state.letterColorsCsv || '').split(',').map(v => v.trim()).filter(Boolean);
 
@@ -541,13 +568,53 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 			tabMessageBtn.classList.toggle('active', tab === 'message');
 			tabTestsBtn.classList.toggle('active', tab === 'test');
 			tabDesignsBtn.classList.toggle('active', tab === 'design');
+			tabImageBtn.classList.toggle('active', tab === 'image');
 			messagePanel.classList.toggle('active', tab === 'message');
 			testsPanel.classList.toggle('active', tab === 'test');
 			designsPanel.classList.toggle('active', tab === 'design');
+			imagePanel.classList.toggle('active', tab === 'image');
 		}
 
 		function updateTestUI() {
 			testColorWrap.style.display = testNameInput.value === 'solid_fill' ? 'block' : 'none';
+		}
+
+		function setImageInfo(text, kind) {
+			imageInfoEl.textContent = text;
+			imageInfoEl.className = 'status ' + (kind || '');
+		}
+
+		function imageToPackedPixels(file) {
+			return new Promise((resolve, reject) => {
+				const img = new Image();
+				const objectUrl = URL.createObjectURL(file);
+				img.onload = () => {
+					const width = 32;
+					const height = Math.max(8, Math.min(48, Math.round((img.height * width) / Math.max(1, img.width))));
+					const canvas = document.createElement('canvas');
+					canvas.width = width;
+					canvas.height = height;
+					const ctx = canvas.getContext('2d', { willReadFrequently: true });
+					ctx.imageSmoothingEnabled = true;
+					ctx.clearRect(0, 0, width, height);
+					ctx.drawImage(img, 0, 0, width, height);
+					const data = ctx.getImageData(0, 0, width, height).data;
+					const pixels = [];
+					for (let i = 0; i < data.length; i += 4) {
+						const r = data[i] >> 4;
+						const g = data[i + 1] >> 4;
+						const b = data[i + 2] >> 4;
+						pixels.push(((r << 8) | (g << 4) | b).toString(16).padStart(3, '0').toUpperCase());
+					}
+					URL.revokeObjectURL(objectUrl);
+					resolve({ width, height, pixels: pixels.join(',') });
+				};
+				img.onerror = () => {
+					URL.revokeObjectURL(objectUrl);
+					reject(new Error('Unable to load the selected image'));
+				};
+				img.src = objectUrl;
+			});
 		}
 
 		async function sendForm(action) {
@@ -587,6 +654,47 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 			}
 		}
 
+		async function uploadImage() {
+			const file = imageFileInput.files && imageFileInput.files[0];
+			if (!file) {
+				setImageInfo('Choose an image first.', 'err');
+				return;
+			}
+
+			try {
+				setImageInfo('Preparing image...', '');
+				const image = await imageToPackedPixels(file);
+				state.program = 'image';
+				setActiveTab('image');
+				setImageInfo(`${file.name} -> ${image.width}x${image.height}`, 'ok');
+
+				const brightness = Math.max(0, Math.min(100, Number(brightnessInput.value || 0)));
+				const params = new URLSearchParams();
+				params.set('key', state.key);
+				params.set('action', 'run_image');
+				params.set('program', state.program);
+				params.set('brightness', String(brightness));
+				params.set('image_width', String(image.width));
+				params.set('image_height', String(image.height));
+				params.set('image_pixels', image.pixels);
+
+				setStatus('Uploading image...', '');
+				const res = await fetch('/set', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+					body: params.toString()
+				});
+				const text = await res.text();
+				if (!res.ok) {
+					throw new Error(text || ('Request failed: ' + res.status));
+				}
+				setStatus(text || 'Image uploaded', 'ok');
+			} catch (error) {
+				setImageInfo(error.message || 'Image upload failed', 'err');
+				setStatus(error.message || 'Image upload failed', 'err');
+			}
+		}
+
 		msgInput.value = state.message;
 		testNameInput.value = state.testName;
 		designNameInput.value = state.designName;
@@ -620,6 +728,10 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 			state.program = 'design';
 			setActiveTab('design');
 		});
+		tabImageBtn.addEventListener('click', () => {
+			state.program = 'image';
+			setActiveTab('image');
+		});
 		modeInput.addEventListener('change', updateModeUI);
 		testNameInput.addEventListener('change', updateTestUI);
 		solidColorInput.addEventListener('input', () => {
@@ -641,6 +753,7 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 			state.program = 'design';
 			sendForm('run_design');
 		});
+		document.getElementById('uploadImage').addEventListener('click', uploadImage);
 
 		setActiveTab(state.program || 'message');
 		updateTestUI();

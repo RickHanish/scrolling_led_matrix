@@ -7,12 +7,11 @@
 #include "colors/color_utils.h"
 #include "config/constants.h"
 #include "display/font.h"
+#include "display/scene_renderer.h"
 #include "text/text_utils.h"
 #include "text/utf8.h"
 
 static void renderMessageFrame(AppState& state);
-static void renderTestFrame(AppState& state);
-static void renderDesignFrame(AppState& state);
 
 static uint16_t XY(uint8_t x, uint8_t y) {
 	uint8_t px = HEIGHT - 1 - y;
@@ -51,9 +50,11 @@ void renderFrame(AppState& state) {
 	FastLED.clear();
 
 	if (state.renderProgram == RenderProgram::Test) {
-		renderTestFrame(state);
+		renderTestScene(state);
 	} else if (state.renderProgram == RenderProgram::Design) {
-		renderDesignFrame(state);
+		renderDesignScene(state);
+	} else if (state.renderProgram == RenderProgram::Image) {
+		renderImageScene(state);
 	} else {
 		renderMessageFrame(state);
 	}
@@ -83,64 +84,4 @@ static void renderMessageFrame(AppState& state) {
 
 	state.scrollX--;
 	advanceMessageScrollState(state, displayMessage);
-}
-
-static void renderTestFrame(AppState& state) {
-	if (state.selectedTest == MatrixTest::ScanWhitePixel) {
-		uint16_t index = state.scanIndex % NUM_LEDS;
-		uint8_t x = static_cast<uint8_t>(index % WIDTH);
-		uint8_t y = static_cast<uint8_t>(index / WIDTH);
-		state.leds[XY(x, y)] = CRGB::White;
-		state.scanIndex = static_cast<uint16_t>((state.scanIndex + 1) % NUM_LEDS);
-		return;
-	}
-
-	if (state.selectedTest == MatrixTest::SolidFill) {
-		fill_solid(state.leds, NUM_LEDS, state.testSolidColor);
-		return;
-	}
-
-	for (uint8_t y = 0; y < HEIGHT; y++) {
-		for (uint8_t x = 0; x < WIDTH; x++) {
-			uint8_t hue = static_cast<uint8_t>(state.animationTick * 2 + x * 6 + y * 10);
-			state.leds[XY(x, y)] = CHSV(hue, 255, 255);
-		}
-	}
-}
-
-static void renderDesignFrame(AppState& state) {
-	if (state.selectedDesign == MatrixDesign::Plasma) {
-		for (uint8_t y = 0; y < HEIGHT; y++) {
-			for (uint8_t x = 0; x < WIDTH; x++) {
-				uint8_t p1 = sin8(static_cast<uint8_t>(x * 10 + state.animationTick * 3));
-				uint8_t p2 = sin8(static_cast<uint8_t>(y * 18 + state.animationTick * 2));
-				uint8_t hue = static_cast<uint8_t>((p1 / 2) + (p2 / 2));
-				state.leds[XY(x, y)] = CHSV(hue, 230, 255);
-			}
-		}
-		return;
-	}
-
-	if (state.selectedDesign == MatrixDesign::CheckerPulse) {
-		uint8_t pulse = sin8(static_cast<uint8_t>(state.animationTick * 4));
-		for (uint8_t y = 0; y < HEIGHT; y++) {
-			for (uint8_t x = 0; x < WIDTH; x++) {
-				bool checker = ((x + y) % 2) == 0;
-				uint8_t hue = checker ? static_cast<uint8_t>(state.animationTick + 20)
-				                      : static_cast<uint8_t>(state.animationTick + 140);
-				state.leds[XY(x, y)] = CHSV(hue, 220, pulse);
-			}
-		}
-		return;
-	}
-
-	for (uint8_t y = 0; y < HEIGHT; y++) {
-		for (uint8_t x = 0; x < WIDTH; x++) {
-			int16_t dx = static_cast<int16_t>(x) - static_cast<int16_t>(WIDTH / 2);
-			int16_t dy = static_cast<int16_t>(y) - static_cast<int16_t>(HEIGHT / 2);
-			uint8_t diamond = static_cast<uint8_t>((abs(dx) + abs(dy)) * 20);
-			uint8_t hue = static_cast<uint8_t>(diamond + state.animationTick * 3);
-			state.leds[XY(x, y)] = CHSV(hue, 255, 255);
-		}
-	}
 }

@@ -11,7 +11,8 @@
 enum class RenderProgram : uint8_t {
 	Message,
 	Test,
-	Design
+	Design,
+	Image
 };
 
 enum class MatrixTest : uint8_t {
@@ -23,7 +24,8 @@ enum class MatrixTest : uint8_t {
 enum class MatrixDesign : uint8_t {
 	Plasma,
 	CheckerPulse,
-	DiamondWave
+	DiamondWave,
+	RollingField
 };
 
 struct AppState {
@@ -42,6 +44,7 @@ struct AppState {
 
 	uint8_t currentBrightnessPct = DEFAULT_BRIGHTNESS_PCT;
 	uint8_t currentBrightness = 50; // Default to ~50/255 until applyBrightness calculates it
+	uint8_t renderBrightnessLimitPct = 100;
 
 	RenderProgram renderProgram = RenderProgram::Message;
 	MatrixTest selectedTest = MatrixTest::ScanWhitePixel;
@@ -49,6 +52,11 @@ struct AppState {
 	CRGB testSolidColor = CRGB(0, 160, 255);
 	uint16_t animationTick = 0;
 	uint16_t scanIndex = 0;
+	std::vector<CRGB> imagePixels;
+	uint16_t imageWidth = 0;
+	uint16_t imageHeight = 0;
+	int16_t imageScrollY = 0;
+	int8_t imageScrollDirection = 1;
 
 	bool customMessage = false;
 	unsigned long customMessageStartedAt = 0;
