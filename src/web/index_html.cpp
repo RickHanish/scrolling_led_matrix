@@ -80,6 +80,7 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 			--muted: #5a6c88;
 			--accent: #0f8cff;
 			--accent-2: #23d6b5;
+			--ok: #14873a;
 			--danger: #d64545;
 		}
 		* { box-sizing: border-box; }
@@ -207,6 +208,18 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 			background: linear-gradient(90deg, #f0f4fa, #e9f6ff);
 			color: #1b3557;
 			border: 1px solid #c8d9ec;
+			font-weight: 700;
+		}
+		.btn-power-on {
+			background: linear-gradient(90deg, #dff5e8, #c8f2db);
+			color: #0f5b2e;
+			border: 1px solid #9fd8b8;
+			font-weight: 700;
+		}
+		.btn-power-off {
+			background: linear-gradient(90deg, #ffe3e3, #ffd6d6);
+			color: #7e2020;
+			border: 1px solid #efabab;
 			font-weight: 700;
 		}
 		.preview {
@@ -381,6 +394,11 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 				<label for='brightness'>Brightness (%)</label>
 				<input id='brightness' type='number' min='0' max='100'>
 
+				<div style='height:10px'></div>
+				<div class='actions'>
+					<button id='toggleDisplayPower' class='btn-secondary' type='button'>Turn Display Off</button>
+				</div>
+
 				<p id='status' class='status'></p>
 			</section>
 
@@ -407,6 +425,7 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 			gradientStart: "__GRADIENT_START__",
 			gradientEnd: "__GRADIENT_END__",
 			brightness: __BRIGHTNESS__,
+			displayOn: __DISPLAY_ON__,
 			letterColorsCsv: "__LETTER_COLORS__"
 		};
 
@@ -436,6 +455,7 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 		const designNameInput = document.getElementById('designName');
 		const imageFileInput = document.getElementById('imageFile');
 		const imageInfoEl = document.getElementById('imageInfo');
+		const toggleDisplayPowerBtn = document.getElementById('toggleDisplayPower');
 
 		let letterColors = (state.letterColorsCsv || '').split(',').map(v => v.trim()).filter(Boolean);
 
@@ -584,6 +604,18 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 			imageInfoEl.className = 'status ' + (kind || '');
 		}
 
+		function updatePowerButton() {
+			if (state.displayOn) {
+				toggleDisplayPowerBtn.textContent = 'Turn Display Off';
+				toggleDisplayPowerBtn.classList.remove('btn-power-on');
+				toggleDisplayPowerBtn.classList.add('btn-power-off');
+			} else {
+				toggleDisplayPowerBtn.textContent = 'Turn Display On';
+				toggleDisplayPowerBtn.classList.remove('btn-power-off');
+				toggleDisplayPowerBtn.classList.add('btn-power-on');
+			}
+		}
+
 		function imageToPackedPixels(file) {
 			return new Promise((resolve, reject) => {
 				const img = new Image();
@@ -695,6 +727,32 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 			}
 		}
 
+		async function toggleDisplayPower() {
+			const nextDisplayOn = !state.displayOn;
+			const params = new URLSearchParams();
+			params.set('key', state.key);
+			params.set('action', 'set_power');
+			params.set('display_on', nextDisplayOn ? '1' : '0');
+
+			try {
+				setStatus(nextDisplayOn ? 'Turning display on...' : 'Turning display off...', '');
+				const res = await fetch('/set', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+					body: params.toString()
+				});
+				const text = await res.text();
+				if (!res.ok) {
+					throw new Error(text || ('Request failed: ' + res.status));
+				}
+				state.displayOn = nextDisplayOn;
+				updatePowerButton();
+				setStatus(text || (state.displayOn ? 'Display is on' : 'Display is off'), 'ok');
+			} catch (error) {
+				setStatus(error.message || 'Failed to change display power', 'err');
+			}
+		}
+
 		msgInput.value = state.message;
 		testNameInput.value = state.testName;
 		designNameInput.value = state.designName;
@@ -754,10 +812,12 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 			sendForm('run_design');
 		});
 		document.getElementById('uploadImage').addEventListener('click', uploadImage);
+		toggleDisplayPowerBtn.addEventListener('click', toggleDisplayPower);
 
 		setActiveTab(state.program || 'message');
 		updateTestUI();
 		updateModeUI();
+		updatePowerButton();
 	</script>
 </body>
 </html>
@@ -774,6 +834,7 @@ String buildIndexHtml(const AppState& state, const char* apiKey) {
 	html.replace("__GRADIENT_START__", colorToHex(state.gradientStartColor));
 	html.replace("__GRADIENT_END__", colorToHex(state.gradientEndColor));
 	html.replace("__BRIGHTNESS__", String(state.currentBrightnessPct));
+	html.replace("__DISPLAY_ON__", state.displayEnabled ? "true" : "false");
 	html.replace("__LETTER_COLORS__", escapeForJs(serializePerLetterColors(state)));
 
 	return html;

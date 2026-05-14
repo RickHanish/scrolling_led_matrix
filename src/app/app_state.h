@@ -45,6 +45,7 @@ struct AppState {
 	uint8_t currentBrightnessPct = DEFAULT_BRIGHTNESS_PCT;
 	uint8_t currentBrightness = 50; // Default to ~50/255 until applyBrightness calculates it
 	uint8_t renderBrightnessLimitPct = 100;
+	bool displayEnabled = true;
 
 	RenderProgram renderProgram = RenderProgram::Message;
 	MatrixTest selectedTest = MatrixTest::ScanWhitePixel;

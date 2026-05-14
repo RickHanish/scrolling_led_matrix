@@ -44,6 +44,16 @@ static MatrixDesign parseMatrixDesign(const String& value) {
 	return MatrixDesign::Plasma;
 }
 
+static bool parseDisplayEnabled(const String& value, bool currentValue) {
+	if (value == "1" || value == "true" || value == "on") {
+		return true;
+	}
+	if (value == "0" || value == "false" || value == "off") {
+		return false;
+	}
+	return currentValue;
+}
+
 static bool parsePackedHexColor3(const String& token, CRGB& outColor) {
 	if (token.length() == 6) {
 		return parseHexColor(String("#") + token, outColor);
@@ -169,6 +179,10 @@ static void handleSet() {
 
 	if (server.hasArg("test_color")) {
 		parseHexColor(server.arg("test_color"), gState->testSolidColor);
+	}
+
+	if (server.hasArg("display_on")) {
+		gState->displayEnabled = parseDisplayEnabled(server.arg("display_on"), gState->displayEnabled);
 	}
 
 	if (server.hasArg("image_width") && server.hasArg("image_height") && server.hasArg("image_pixels")) {

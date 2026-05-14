@@ -13,6 +13,12 @@ void initMatrix(AppState& state) {
 }
 
 void applyBrightness(AppState& state) {
+	if (!state.displayEnabled) {
+		state.currentBrightness = 0;
+		FastLED.setBrightness(0);
+		return;
+	}
+
 	uint8_t cappedBrightnessPct = state.currentBrightnessPct;
 	if (state.renderBrightnessLimitPct < cappedBrightnessPct) {
 		cappedBrightnessPct = state.renderBrightnessLimitPct;
